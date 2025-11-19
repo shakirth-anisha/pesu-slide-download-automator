@@ -1,8 +1,10 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError
+from dotenv import load_dotenv, set_key, dotenv_values
 import os
 import re
 import getpass
 
+ENV_FILE = ".env"
 downloaded_urls = set()
 
 def sanitize(name: str):
@@ -23,14 +25,18 @@ def select_course(page):
     page.wait_for_selector("span.menu-name:has-text('My Courses')", timeout=15000)
     page.click("span.menu-name:has-text('My Courses')")
     page.wait_for_selector("table.table.table-hover", timeout=15000)
+    no_content = page.locator("h2:text('No subjects found')")
 
     rows = page.locator("table.table.table-hover tbody tr")
     count = rows.count()
 
     courses = []
-    for i in range(count):
-        title = rows.nth(i).locator("td:nth-child(2)").inner_text().strip()
-        courses.append(title)
+    if no_content.is_visible():
+        print("No courses found in this semester.")
+    else:
+        for i in range(count):
+            title = rows.nth(i).locator("td:nth-child(2)").inner_text().strip()
+            courses.append(title)
 
     print("\nAvailable Courses:")
     for index, course in enumerate(courses, 1):
@@ -44,6 +50,33 @@ def select_course(page):
     print(f"Opening: {course_name}")
 
     return course_name
+
+# 3. SELECT UNIT
+def select_unit(page):
+    page.wait_for_selector("#courselistunit li", timeout=15000)
+
+    units = page.locator("#courselistunit li a")
+    unit_count = units.count()
+
+    names = []
+    for i in range(unit_count):
+        names.append(units.nth(i).inner_text().strip())
+
+    print("\nAvailable Units:")
+    for index, name in enumerate(names, 1):
+        print(f"{index}. {name}")
+
+    choice = int(input("\nEnter unit number to open: "))
+    selected_unit = units.nth(choice - 1)
+
+    unit_name = sanitize(names[choice - 1])
+    selected_unit.click()
+
+    print(f"Opening {unit_name}...")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(800)
+
+    return unit_name
 
 # 4. CLICK FIRST SLIDE
 def open_first_slide(page):
@@ -105,7 +138,7 @@ def download_slides(page, course_name, unit_name, downloaded_urls):
             next_number += 1
             page.wait_for_timeout(300)
 
-# 6. PAGE NAVIGATION + SLIDE DOWNLOAD
+# 6. PAGE NAVIGATION
 def navigate_through_pages(page, course_name, unit_name, downloaded_urls):
     while True:
         page.wait_for_selector(".coursecontent-navigation-area a.pull-right", timeout=15000)
@@ -118,9 +151,7 @@ def navigate_through_pages(page, course_name, unit_name, downloaded_urls):
         slides_tab.click()
         page.wait_for_timeout(600)
 
-        no_slides = page.locator(
-            "h2:text('No Slides Content to Display')"
-        )
+        no_slides = page.locator("h2:text('No Slides Content to Display')")
 
         if no_slides.is_visible():
             print("No slides available. Skipping download.")
@@ -139,25 +170,60 @@ def navigate_through_pages(page, course_name, unit_name, downloaded_urls):
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(500)
 
-# MAIN
 def main():
-    username = input("Enter Username: ")
-    password = getpass.getpass("Enter Password: ")
+    if os.path.exists(ENV_FILE):
+        load_dotenv(ENV_FILE)
+        dont_ask_again = os.getenv("DONT_ASK_AGAIN", "0")
+        username = os.getenv("USERNAME")
+        password = os.getenv("PASSWORD")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
-        page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
+        if dont_ask_again == "1" and (username == "NOT_SET" or password == "NOT_SET"):
+            username = input("Enter Username (SRN / PRN): ")
+            password = getpass.getpass("Enter Pesu Password: ")
+        elif dont_ask_again != "1":
+            username = username or input("Enter Username (SRN / PRN): ")
+            password = password or getpass.getpass("Enter Pesu Password: ")
 
-        login(page, username, password)
-        course_name = select_course(page)
-        unit_name = select_unit(page)
-        open_first_slide(page)
-        download_slides(page, course_name, unit_name, downloaded_urls)
-        navigate_through_pages(page, course_name, unit_name, downloaded_urls)
+    else:
+        username = input("Enter Username (SRN / PRN): ")
+        password = getpass.getpass("Enter Pesu Password: ")
 
-        page.wait_for_timeout(2000)
+        choice = input("\nSave credentials locally?\n1. Yes\n2. No\n3. Don't ask again\nSelect Option: ").strip().lower()
+        if choice == "1":
+            with open(ENV_FILE, "w") as f:
+                f.write(f"USERNAME={username}\nPASSWORD={password}\nDONT_ASK_AGAIN=0\n")
+            print(f"Credentials saved in {ENV_FILE}")
+        elif choice == "3":
+            with open(ENV_FILE, "w") as f:
+                f.write(f"USERNAME=NOT_SET\nPASSWORD=NOT_SET\nDONT_ASK_AGAIN=1\n")
+            print(f"Preference saved. Will not ask for credentials again.")
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            page.route(
+                "**/*",
+                lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_()
+            )
+
+            login(page, username, password)
+            course_name = select_course(page)
+            unit_name = select_unit(page)
+            open_first_slide(page)
+            download_slides(page, course_name, unit_name, downloaded_urls)
+            navigate_through_pages(page, course_name, unit_name, downloaded_urls)
+
+    except TimeoutError:
+        print("\nUnstable internet connection. Try again later.")
+    except Exception as e:
+        print(f"\nAn unexpected error occurred: {e}")
+    finally:
+        try:
+            browser.close()
+        except:
+            pass
 
 if __name__ == "__main__":
     main()
