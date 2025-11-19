@@ -75,6 +75,7 @@ def open_first_slide(page):
     
 # 5. DOWNLOAD SLIDE
 def download_slides(page, course_name, unit_name):
+    page.wait_for_timeout(500)
     page.wait_for_selector(".link-preview a")
     slide_links = page.locator(".link-preview a")
     slide_count = slide_links.count()
@@ -119,7 +120,29 @@ def download_slides(page, course_name, unit_name):
             print(f"Saved → {filepath}")
             next_number += 1
 
-    print("\nAll files downloaded successfully.")
+def navigate_through_pages(page, course_name, unit_name):
+    while True:
+        page.wait_for_selector(".coursecontent-navigation-area a.pull-right")
+        next_button = page.locator(".coursecontent-navigation-area a.pull-right")
+        label = next_button.inner_text().strip()
+
+        print("Current button:", label)
+        print("Clicking Slides tab…")
+        slides_tab = page.locator("#contentType_2")
+        slides_tab.click()
+        download_slides(page, course_name, unit_name)
+
+        if "Back to Units" in label:
+            print("Reached 'Back to Units'. Stopping navigation.")
+            break
+
+        next_button.click()
+        print("Clicked next… waiting for next page load")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(500)
+
+    page.wait_for_load_state("networkidle")
+    
 
 def main():
     username = input("Enter Username: ")
@@ -135,6 +158,7 @@ def main():
         unit_name = select_unit(page)
         open_first_slide(page)
         download_slides(page, course_name, unit_name)
+        navigate_through_pages(page, course_name, unit_name)
 
         page.wait_for_timeout(5000)
 
