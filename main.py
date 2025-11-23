@@ -10,6 +10,7 @@ from automate import (
     download_slides,
     navigate_through_pages,
 )
+from file_conversion import convert_pptx_to_pdf
 from merge import ask_and_merge_pdfs
 
 ENV_FILE = ".env"
@@ -72,13 +73,16 @@ def main():
             course_name = select_course(page)
             unit_name = select_unit(page)
             open_first_slide(page)
+            
             download_slides(page, course_name, unit_name, downloaded_urls)
             navigate_through_pages(
                 page, course_name,
                 unit_name, downloaded_urls)
 
             folder = "{} {}".format(course_name, unit_name)
-            ask_and_merge_pdfs(folder)
+
+        convert_pptx_to_pdf(folder)
+        ask_and_merge_pdfs(folder)
 
     except TimeoutError:
         print("\nUnstable internet connection. Try again later.")

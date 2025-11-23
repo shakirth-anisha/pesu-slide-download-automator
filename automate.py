@@ -128,10 +128,17 @@ def download_slides(page, course_name, unit_name, downloaded_urls):
         if not urls:
             onclick_div = item.get_attribute("onclick")
             if onclick_div:
-                matches = re.findall(r"downloadcoursedoc\('([^']+)'", onclick_div)
+                matches = re.findall(
+                    r"downloadcoursedoc\('([^']+)'",
+                    onclick_div
+                )
                 if matches:
-                    urls = [f"/Academy/a/referenceMeterials/downloadslidecoursedoc/{m}" for m in matches]
-                    is_case2 = True  # force as case 2
+                    urls = [
+                        f"/Academy/a/referenceMeterials/downloadslidecoursedoc/{m}"
+                        for m in matches
+                    ]
+
+                    is_case2 = True
 
         if not urls:
             print("Could not extract URL.")

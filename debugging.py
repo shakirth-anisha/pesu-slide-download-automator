@@ -1,5 +1,5 @@
-# debugging.py
 from playwright.sync_api import Page
+
 
 def enable_debug(page: Page):
     page.on("console", lambda msg: print(f"[Console] {msg.type}: {msg.text}"))
