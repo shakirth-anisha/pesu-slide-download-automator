@@ -56,7 +56,7 @@ def merge(folder, output_name=None):
 
 
 # 7. MERGE PDFs
-def ask_and_merge_pdfs(folder, output = None):
+def ask_and_merge_pdfs(folder, output_name = None):
     values = dotenv_values(ENV_FILE) if os.path.exists(ENV_FILE) else {}
     pref = values.get("MERGE_PDFS", None)
 
@@ -85,10 +85,10 @@ def ask_and_merge_pdfs(folder, output = None):
     choice = input("Select option: ").strip()
 
     if choice == "1":
-        merge(folder)
+        merge(folder, output_name)
         set_key(ENV_FILE, "MERGE_PDFS", "1")
     elif choice == "2":
-        merge(folder)
+        merge(folder, output_name)
         set_key(ENV_FILE, "MERGE_PDFS", "0")
     elif choice == "3":
         set_key(ENV_FILE, "MERGE_PDFS", "0")
