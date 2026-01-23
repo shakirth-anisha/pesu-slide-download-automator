@@ -11,7 +11,7 @@
 
    * [Converting PPTX to PDF](#converting-pptx-to-pdf)
    * [Merge PDFs](#merge-pdfs)
-5. [View Playwright Automation](#view-playwright-automation)
+5. [Hide View Playwright Automation](#hide-view-playwright-automation)
 6. [Notes](#notes)
 
 ---
@@ -77,28 +77,25 @@ python merge.py --folder "FolderName" --output "merged.pdf"
 
 ---
 
-## View Playwright Automation
+## Hide View Playwright Automation
 
-To see the browser while automating (for debugging):
-
-1. Change headless mode in `main.py` and `file_conversion.py`:
-
-```python
-browser = p.chromium.launch(headless=False)
-```
-
-2. Optionally comment out resource blocking:
+To not see the browser while automating
+1. Change headless mode in `main.py` and `file_conversion.py` from `False` to `True`:
 
 ```python
-# page.route(
-#     "**/*",
-#     lambda route: route.abort()
-#     if route.request.resource_type in ["image", "media", "font"]
-#     else route.continue_()
-# )
+browser = p.chromium.launch(headless=True)
 ```
 
-This will allow you to watch the downloads live in the browser.
+2. Uncomment out resource blocking:
+
+```python
+page.route(
+    "**/*",3
+    lambda route: route.abort()
+    if route.request.resource_type in ["image", "media", "font"]
+    else route.continue_()
+)
+```
 
 ---
 

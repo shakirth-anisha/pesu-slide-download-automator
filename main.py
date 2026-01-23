@@ -59,15 +59,15 @@ def main():
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=False)
             context = browser.new_context()
             page = context.new_page()
-            page.route(
-                "**/*",
-                lambda route: route.abort()
-                if route.request.resource_type in ["image", "media", "font"]
-                else route.continue_(),
-            )
+            # page.route(
+            #     "**/*",
+            #     lambda route: route.abort()
+            #     if route.request.resource_type in ["image", "media", "font"]
+            #     else route.continue_(),
+            # )
 
             login(page, username, password)
             course_name = select_course(page)
