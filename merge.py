@@ -75,6 +75,7 @@ def ask_and_merge_pdfs(folder, output_name = None):
         return
     if pref == "1":
         merge(folder)
+        keep_only_merged(folder)
         return
 
     print("\nMerge all PDFs into a single file?")
@@ -86,9 +87,11 @@ def ask_and_merge_pdfs(folder, output_name = None):
 
     if choice == "1":
         merge(folder, output_name)
+        keep_only_merged(folder)
         set_key(ENV_FILE, "MERGE_PDFS", "1")
     elif choice == "2":
         merge(folder, output_name)
+        keep_only_merged(folder)
         set_key(ENV_FILE, "MERGE_PDFS", "0")
     elif choice == "3":
         set_key(ENV_FILE, "MERGE_PDFS", "0")
@@ -96,6 +99,43 @@ def ask_and_merge_pdfs(folder, output_name = None):
         set_key(ENV_FILE, "MERGE_PDFS", "-1")
         print("Preference saved. Will not merge.")
 
+# Delete Files
+def delete_non_merged(folder):
+    for filename in os.listdir(folder):
+        if filename.endswith(".pdf") and not filename.__contains__("merged"):
+            filepath = os.path.join(folder, filename)
+            os.remove(filepath)
+            print(f"Deleted file: {filepath}")
+
+# DELETE NON MERGED FILES
+def keep_only_merged(folder):
+    values = dotenv_values(ENV_FILE) if os.path.exists(ENV_FILE) else {}
+    pref = values.get("KEEP_ONLY_MERGED", None)
+
+    if pref == "1":
+        delete_non_merged(folder)
+        return
+    if pref == "-1":
+        return
+    
+    print("\nKeep only merged PDF?")
+    print("1. Always")
+    print("2. Yes")
+    print("3. No")
+    print("4. Don't ask again (always no)")
+    choice = input("Select option: ").strip()
+    
+    if choice == "1":
+        delete_non_merged(folder)
+        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "1")
+    elif choice == "2":
+        delete_non_merged(folder)
+        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "0")
+    elif choice == "3":
+        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "0")
+    elif choice == "4":
+        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "-1")
+        print("Preference saved. Will not merge.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Merge PDFs in a folder")

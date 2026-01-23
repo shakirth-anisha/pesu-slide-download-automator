@@ -2,14 +2,8 @@ from playwright.sync_api import sync_playwright, TimeoutError
 from dotenv import load_dotenv
 import os
 import getpass
-from automate import (
-    login,
-    select_course,
-    select_unit,
-    open_first_slide,
-    download_slides,
-    navigate_through_pages,
-)
+from automate import (download_slides, login, navigate_through_pages,
+    open_first_slide, select_course, select_unit)
 from file_conversion import convert_pptx_to_pdf
 from merge import ask_and_merge_pdfs
 
@@ -85,7 +79,7 @@ def main():
         ask_and_merge_pdfs(folder)
 
     except TimeoutError:
-        print("\nUnstable internet connection. Try again later.")
+        print("\nUnstable internet connection. Try again later. If issue persists, please contact the developer.")
     except KeyboardInterrupt:
         print("\nExiting...")
     except Exception as exc:
