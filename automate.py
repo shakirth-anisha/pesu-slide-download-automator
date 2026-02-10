@@ -1,7 +1,6 @@
 import os
 import re
 
-ENV_FILE = ".env"
 downloaded_urls = set()
 
 
@@ -17,7 +16,15 @@ def login(page, username, password):
     page.click("button.btn.btn-lg.btn-primary.btn-block")
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(800)
+    
+    # Check for login error message
+    error_div = page.locator("div.login-msg")
+    if error_div.is_visible():
+        error_text = error_div.inner_text().strip()
+        raise ValueError(f"Login failed: {error_text}")
+    
     print("Logged in successfully.")
+    return True
 
 
 # 2. SELECT COURSE

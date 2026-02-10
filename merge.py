@@ -1,9 +1,7 @@
 import os
 import argparse
 from PyPDF2 import PdfMerger
-from dotenv import set_key, dotenv_values
-
-ENV_FILE = ".env"
+from config import Config
 
 
 def get_unique_output_path(folder, base_name):
@@ -57,8 +55,8 @@ def merge(folder, output_name=None):
 
 # 7. MERGE PDFs
 def ask_and_merge_pdfs(folder, output_name = None):
-    values = dotenv_values(ENV_FILE) if os.path.exists(ENV_FILE) else {}
-    pref = values.get("MERGE_PDFS", None)
+    Config.load_env()
+    pref = Config.get_merge_pdfs_preference()
 
     other_files = [
         f for f in os.listdir(folder)
@@ -74,7 +72,7 @@ def ask_and_merge_pdfs(folder, output_name = None):
     if pref == "-1":
         return
     if pref == "1":
-        merge(folder)
+        merge(folder, output_name)
         keep_only_merged(folder)
         return
 
@@ -88,15 +86,15 @@ def ask_and_merge_pdfs(folder, output_name = None):
     if choice == "1":
         merge(folder, output_name)
         keep_only_merged(folder)
-        set_key(ENV_FILE, "MERGE_PDFS", "1")
+        Config.set_merge_pdfs_preference("1")
     elif choice == "2":
         merge(folder, output_name)
         keep_only_merged(folder)
-        set_key(ENV_FILE, "MERGE_PDFS", "0")
+        Config.set_merge_pdfs_preference("0")
     elif choice == "3":
-        set_key(ENV_FILE, "MERGE_PDFS", "0")
+        Config.set_merge_pdfs_preference("0")
     elif choice == "4":
-        set_key(ENV_FILE, "MERGE_PDFS", "-1")
+        Config.set_merge_pdfs_preference("-1")
         print("Preference saved. Will not merge.")
 
 # Delete Files
@@ -109,8 +107,8 @@ def delete_non_merged(folder):
 
 # DELETE NON MERGED FILES
 def keep_only_merged(folder):
-    values = dotenv_values(ENV_FILE) if os.path.exists(ENV_FILE) else {}
-    pref = values.get("KEEP_ONLY_MERGED", None)
+    Config.load_env()
+    pref = Config.get("KEEP_ONLY_MERGED")
 
     if pref == "1":
         delete_non_merged(folder)
@@ -127,15 +125,15 @@ def keep_only_merged(folder):
     
     if choice == "1":
         delete_non_merged(folder)
-        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "1")
+        Config.set_env("KEEP_ONLY_MERGED", "1")
     elif choice == "2":
         delete_non_merged(folder)
-        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "0")
+        Config.set_env("KEEP_ONLY_MERGED", "0")
     elif choice == "3":
-        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "0")
+        Config.set_env("KEEP_ONLY_MERGED", "0")
     elif choice == "4":
-        set_key(ENV_FILE, "KEEP_ONLY_MERGED", "-1")
-        print("Preference saved. Will not merge.")
+        Config.set_env("KEEP_ONLY_MERGED", "-1")
+        print("Preference saved. Will not keep only merged.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Merge PDFs in a folder")
