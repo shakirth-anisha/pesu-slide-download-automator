@@ -98,6 +98,11 @@ def convert_batch_with_ilovepdf(pptx_files, folder):
 # Main conversion controller
 def convert_pptx_to_pdf(folder):
     print(f"Scanning folder: {folder}")
+    
+    # Check if folder exists
+    if not os.path.exists(folder) or not os.path.isdir(folder):
+        print(f"Error: Directory not found: {folder}")
+        return
 
     batches = list(get_batches(folder))
     total_batches = len(batches)
