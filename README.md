@@ -106,3 +106,10 @@ page.route(
 * iLovePDF free version limits batch conversion to **3 files at a time**; `file_conversion.py` automatically batches files.
 
 ---
+
+## License
+
+Copyright (C) 2026 Shakirth Anisha
+
+This project is licensed under the GNU GPL v3.0.
+See the LICENSE file for details.
