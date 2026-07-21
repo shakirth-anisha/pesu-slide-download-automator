@@ -22,7 +22,8 @@ This Python script automates the process of logging into PESU Academy, selecting
 
 ---
 > [!WARNING]
----
+> Some courses on PESU Academy may have missing/improperly connected links that skip subsequent slides. Users are advised to verify slide downloads after execution.
+
 
 ## Installation
 
@@ -51,8 +52,6 @@ This Python script automates the process of logging into PESU Academy, selecting
 2. Enter your SRN/PRN and password when prompted.
 
 3. Follow the on-screen prompts to select a semester, course, and unit.
-
-   * Semesters are listed newest first, so previous semesters can be downloaded, not just the current one.
    * If a semester has no courses, you will be asked to pick another one.
 
 4. The script will open the first slide, download available files, automatically convert pptx to ppt files, and optionally merge them.
