@@ -1,8 +1,9 @@
 from playwright.sync_api import sync_playwright, TimeoutError
 import os
 import getpass
-from automate import (download_slides, login, navigate_through_pages,
-    open_first_slide, select_course, select_unit)
+from automate import (build_folder, download_slides, login,
+    navigate_through_pages, open_first_slide, open_my_courses, select_course,
+    select_semester, select_unit)
 from file_conversion import convert_pptx_to_pdf
 from merge import ask_and_merge_pdfs
 from config import Config
@@ -59,16 +60,25 @@ def main():
                             print("[DEBUG] Exiting before course fetch.")
                             return
                     
-                    course_name = select_course(page)
+                    open_my_courses(page)
+
+                    # An old semester may have no courses, so keep asking
+                    # until one with courses is picked.
+                    while True:
+                        semester_name = select_semester(page)
+                        course_name = select_course(page)
+                        if course_name:
+                            break
+                        print("Please choose a different semester.")
+
                     unit_name = select_unit(page)
                     open_first_slide(page)
                     
-                    download_slides(page, course_name, unit_name, downloaded_urls)
-                    navigate_through_pages(
-                        page, course_name,
-                        unit_name, downloaded_urls)
+                    folder = build_folder(
+                        semester_name, course_name, unit_name)
 
-                    folder = "{} {}".format(course_name, unit_name)
+                    download_slides(page, folder, downloaded_urls)
+                    navigate_through_pages(page, folder, downloaded_urls)
 
                 convert_pptx_to_pdf(folder)
                 ask_and_merge_pdfs(folder)
@@ -102,8 +112,10 @@ def main():
                     print("\n{}\nMax login attempts reached. Exiting.".format(str(e)))
                     return
                     
-    except TimeoutError:
-        print("\nUnstable internet connection. Try again later. If issue persists, please contact the developer.")
+    except TimeoutError as exc:
+        print("\nTimed out waiting for the page. This usually means an unstable "
+              "internet connection, but it can also mean the site layout changed.")
+        print("Details: {}".format(exc))
     except KeyboardInterrupt:
         print("\nExiting...")
     except Exception as exc:
