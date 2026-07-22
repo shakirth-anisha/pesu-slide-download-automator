@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 downloaded_urls = set()
 
@@ -27,13 +28,106 @@ def login(page, username, password):
     return True
 
 
-# 2. SELECT COURSE
-def select_course(page):
+# 2. OPEN MY COURSES
+def open_my_courses(page):
     page.wait_for_selector(
         "span.menu-name:has-text('My Courses')",
         timeout=15000
         )
     page.click("span.menu-name:has-text('My Courses')")
+    page.wait_for_selector("table.table.table-hover", timeout=15000)
+
+
+# 3. SELECT SEMESTER
+def course_table_signature(page):
+    """Snapshot the course table so an AJAX refresh can be detected.
+
+    Snapshot every row's text, not just the count and first row: two
+    semesters can share a row count and first course, which would make the
+    refresh look like it never happened.
+    """
+    rows = page.locator("table.table.table-hover tbody tr")
+    return tuple(text.strip() for text in rows.all_text_contents())
+
+
+def wait_for_course_table_change(page, previous, timeout=15000):
+    """Poll until the course table differs from the snapshot in previous.
+
+    Selecting a semester swaps the table in place without a page load, so
+    there is no navigation or load state to wait on.
+    """
+    deadline = time.monotonic() + timeout / 1000
+    while time.monotonic() < deadline:
+        page.wait_for_timeout(200)
+        if course_table_signature(page) != previous:
+            return True
+
+    print("Course list did not refresh in time. Continuing anyway.")
+    return False
+
+
+def select_semester(page):
+    page.wait_for_selector("#semesters", timeout=15000)
+    # Options in a closed <select> have no bounding box, so Playwright never
+    # treats them as visible. Wait for them to be attached instead.
+    page.wait_for_selector(
+        "#semesters option",
+        state="attached",
+        timeout=15000
+        )
+
+    options = page.locator("#semesters option")
+    option_count = options.count()
+
+    semesters = []
+    for i in range(option_count):
+        option = options.nth(i)
+        # text_content() rather than inner_text(), which is rendering-aware
+        # and returns "" for unrendered elements.
+        name = option.text_content().strip()
+        semesters.append((name, option.get_attribute("value")))
+
+    # Key by the semester's own number, not its position in the dropdown:
+    # the site lists newest first, so position 3 is not Sem-3.
+    numbered = {}
+    unnumbered = []
+    for name, value in semesters:
+        match = re.search(r"\d+", name)
+        if match:
+            numbered[int(match.group())] = (name, value)
+        else:
+            unnumbered.append(name)
+
+    if unnumbered:
+        print("\nSkipping semesters without a number: {}".format(
+            ", ".join(unnumbered)))
+
+    print("\nAvailable Semesters:")
+    for number in sorted(numbered):
+        print(f"{number}. {numbered[number][0]}")
+
+    valid = ", ".join(str(number) for number in sorted(numbered))
+    while True:
+        answer = input(f"\nEnter semester number to open ({valid}): ").strip()
+        if answer.isdigit() and int(answer) in numbered:
+            semester_name, value = numbered[int(answer)]
+            break
+        print(f"Please enter one of: {valid}")
+
+    print(f"Opening {semester_name}...")
+
+    # Re-selecting the current semester fires no onchange, so nothing to wait
+    # for.
+    if value != page.locator("#semesters").input_value():
+        previous = course_table_signature(page)
+        page.select_option("#semesters", value=value)
+        wait_for_course_table_change(page, previous)
+
+    return sanitize(semester_name)
+
+
+# 4. SELECT COURSE
+def select_course(page):
     page.wait_for_selector("table.table.table-hover", timeout=15000)
     no_content = page.locator(
             "h2:text('No subjects found')"
@@ -42,13 +136,14 @@ def select_course(page):
     rows = page.locator("table.table.table-hover tbody tr")
     count = rows.count()
 
-    courses = []
-    if no_content.is_visible():
+    if no_content.is_visible() or not count:
         print("No courses found in this semester.")
-    else:
-        for i in range(count):
-            title = rows.nth(i).locator("td:nth-child(2)").inner_text().strip()
-            courses.append(title)
+        return None
+
+    courses = []
+    for i in range(count):
+        title = rows.nth(i).locator("td:nth-child(2)").inner_text().strip()
+        courses.append(title)
 
     print("\nAvailable Courses:")
     for index, course in enumerate(courses, 1):
@@ -64,7 +159,7 @@ def select_course(page):
     return course_name
 
 
-# 3. SELECT UNIT
+# 5. SELECT UNIT
 def select_unit(page):
     page.wait_for_selector("#courselistunit li", timeout=15000)
 
@@ -92,7 +187,7 @@ def select_unit(page):
     return unit_name
 
 
-# 4. CLICK FIRST SLIDE
+# 6. CLICK FIRST SLIDE
 def open_first_slide(page):
     page.wait_for_selector("span.pesu-icon-presentation-graphs", timeout=15000)
     page.locator("a:has(span.pesu-icon-presentation-graphs)").first.click()
@@ -101,8 +196,13 @@ def open_first_slide(page):
     print("Clicked first slide entry.")
 
 
-# 5. DOWNLOAD SLIDES
-def download_slides(page, course_name, unit_name, downloaded_urls):
+def build_folder(semester_name, course_name, unit_name):
+    """Folder for one unit, kept separate per semester."""
+    return f"{semester_name} {course_name} {unit_name}"
+
+
+# 7. DOWNLOAD SLIDES
+def download_slides(page, folder, downloaded_urls):
     page.wait_for_timeout(800)
     page.wait_for_selector(".link-preview", timeout=15000)
 
@@ -110,7 +210,6 @@ def download_slides(page, course_name, unit_name, downloaded_urls):
     slide_count = slide_items.count()
     print(f"\nFound {slide_count} files.")
 
-    folder = f"{course_name} {unit_name}"
     os.makedirs(folder, exist_ok=True)
 
     existing = [
@@ -178,8 +277,8 @@ def download_slides(page, course_name, unit_name, downloaded_urls):
             page.wait_for_timeout(300)
 
 
-# 6. PAGE NAVIGATION
-def navigate_through_pages(page, course_name, unit_name, downloaded_urls):
+# 8. PAGE NAVIGATION
+def navigate_through_pages(page, folder, downloaded_urls):
     while True:
         page.wait_for_selector(
             ".coursecontent-navigation-area a.pull-right",
@@ -203,7 +302,7 @@ def navigate_through_pages(page, course_name, unit_name, downloaded_urls):
         if no_slides.is_visible():
             print("No slides available. Skipping download.")
         else:
-            download_slides(page, course_name, unit_name, downloaded_urls)
+            download_slides(page, folder, downloaded_urls)
 
         if "Back to Units" in label:
             print("Reached 'Back to Units'. Stopping navigation.")

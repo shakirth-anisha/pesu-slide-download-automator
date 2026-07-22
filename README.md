@@ -21,6 +21,9 @@
 This Python script automates the process of logging into PESU Academy, selecting a course, selecting a unit, opening the first slide, downloading and optionally merging available files using Playwright. All session data is stored only in memory, and the script prompts for your credentials at runtime. It is designed to simplify navigation inside PESU Academy without saving any user data locally.
 
 ---
+> [!WARNING]
+> Some courses on PESU Academy may have missing/improperly connected links that skip subsequent slides. Users are advised to verify slide downloads after execution.
+
 
 ## Installation
 
@@ -48,7 +51,8 @@ This Python script automates the process of logging into PESU Academy, selecting
 
 2. Enter your SRN/PRN and password when prompted.
 
-3. Follow the on-screen prompts to select a course and unit.
+3. Follow the on-screen prompts to select a semester, course, and unit.
+   * If a semester has no courses, you will be asked to pick another one.
 
 4. The script will open the first slide, download available files, automatically convert pptx to ppt files, and optionally merge them.
 
