@@ -61,6 +61,9 @@ class FakeList:
     def nth(self, index):
         return self.items[index]
 
+    def all_text_contents(self):
+        return [item.inner_text() for item in self.items]
+
     @property
     def first(self):
         return self.items[0]

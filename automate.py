@@ -40,12 +40,14 @@ def open_my_courses(page):
 
 # 3. SELECT SEMESTER
 def course_table_signature(page):
-    """Snapshot the course table so an AJAX refresh can be detected."""
+    """Snapshot the course table so an AJAX refresh can be detected.
+
+    Snapshot every row's text, not just the count and first row: two
+    semesters can share a row count and first course, which would make the
+    refresh look like it never happened.
+    """
     rows = page.locator("table.table.table-hover tbody tr")
-    count = rows.count()
-    if not count:
-        return (0, "")
-    return (count, rows.first.inner_text().strip())
+    return tuple(text.strip() for text in rows.all_text_contents())
 
 
 def wait_for_course_table_change(page, previous, timeout=15000):
